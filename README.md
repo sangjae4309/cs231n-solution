@@ -6,9 +6,12 @@
 Complete solution code of standford cs231n assignemnt (spring 2025).
 Check out a detailed walkthrough at **[this link](https://sangjae4309.github.io/projects/cs231n.html)**. The post contains more comprehensive explanations.
 
-### Main sources (official)
-* [**Course page**](http://cs231n.stanford.edu/index.html)
-* [**Assignments**](http://cs231n.stanford.edu/assignments.html)
+### Main sources 
+* [**(official) Course page**](http://cs231n.stanford.edu/index.html)
+* [**(official) Assignments1**](https://cs231n.github.io/assignments2025/assignment1/)
+* [**(official) Assignments2**](https://cs231n.github.io/assignments2025/assignment1/)
+* [**(official) Assignments3**](https://cs231n.github.io/assignments2025/assignment1/)
+* [**Sangjae's solution blog post**](https://sangjae4309.github.io/projects/cs231n.html)
 
 <br>
 
