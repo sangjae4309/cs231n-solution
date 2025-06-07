@@ -1,0 +1,10 @@
+**/__pycache__/
+**/cifar-10-batches-py
+**/coco_captioning
+**/*.npz
+**/*.npy
+**/build/
+**/images/
+**/notebook_images/
+**/pretrained_model/
+**/pretrained/
