@@ -155,7 +155,12 @@ class MultiHeadAttention(nn.Module):
         #     prevent a value from influencing output. Specifically, the PyTorch   #
         #     function masked_fill may come in handy.                              #
         ############################################################################
+        H = self.n_head
+        query   = query.reshape(N, S, H, E//H)
+        key     = key.reshape(N, T, H, E//H)
+        value   = value.reshape(N, T, H, E//H)
 
+        similarity = torch.matmul(query)  # [H, N, N]
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
