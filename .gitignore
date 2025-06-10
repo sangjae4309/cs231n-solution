@@ -8,3 +8,4 @@
 **/notebook_images/
 **/pretrained_model/
 **/pretrained/
+**/*.gz

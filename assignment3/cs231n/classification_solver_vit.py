@@ -57,7 +57,7 @@ class ClassificationSolverViT:
     def train(self, device='cpu'):
         train_loader = torch.utils.data.DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
         test_loader = torch.utils.data.DataLoader(self.test_data, batch_size=self.batch_size, shuffle=False)
-
+        
         self.model.to(device)
         self.loss_criterion.to(device)
 

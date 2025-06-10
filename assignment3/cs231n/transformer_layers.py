@@ -36,11 +36,15 @@ class PositionalEncoding(nn.Module):
         # this is what the autograder is expecting. For reference, our solution is #
         # less than 5 lines of code.                                               #
         ############################################################################
-
+        i = torch.arange(max_len).unsqueeze(1) # [max_len, 1]
+        j = torch.arange(0, embed_dim, step=2)
+        j = j.repeat_interleave(2).unsqueeze(0) # [1, embed_dim]
+        x = i*torch.pow(1e+4, -j/embed_dim)     #[max_len, embed_dim]
+        pe[0,:, 0::2] = torch.sin(x[:, 0::2])               # even indices
+        pe[0,:, 1::2] = torch.cos(x[:, 1::2])               # odd indice
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
-
         # Make sure the positional encodings will be saved with the model
         # parameters (mostly for completeness).
         self.register_buffer('pe', pe)
@@ -58,13 +62,15 @@ class PositionalEncoding(nn.Module):
         """
         N, S, D = x.shape
         # Create a placeholder, to be overwritten by your code below.
-        output = torch.empty((N, S, D))
+        output = torch.empty((N, S, D), device=x.device) #default: cpu
         ############################################################################
         # TODO: Index into your array of positional encodings, and add the         #
         # appropriate ones to the input sequence. Don't forget to apply dropout    #
         # afterward. This should only take a few lines of code.                    #
         ############################################################################
-
+        idx = torch.arange(S, device=x.device) #default: cpu
+        output[:, idx, :] = x[:, idx, :] + self.pe[0,idx,:]
+        output = self.dropout(output)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -156,11 +162,23 @@ class MultiHeadAttention(nn.Module):
         #     function masked_fill may come in handy.                              #
         ############################################################################
         H = self.n_head
-        query   = query.reshape(N, S, H, E//H)
-        key     = key.reshape(N, T, H, E//H)
-        value   = value.reshape(N, T, H, E//H)
+        HD = self.head_dim
+        query   = self.query(query).reshape(N, S, H, HD).permute(2,0,1,3)      # [H,N,S,E//H]
+        key     = self.key(key).reshape(N, T, H, HD).permute(2,0,1,3)          # [H,N,T,E//H]
+        value   = self.value(value).reshape(N, T, H, HD).permute(2,0,1,3)      # [H,N,T,E//H]
+        similarity = torch.matmul(query, key.transpose(-2,-1))/math.sqrt(HD)   # [H,N,S,T]
 
-        similarity = torch.matmul(query)  # [H, N, N]
+        if attn_mask is not None:
+            similarity = similarity.masked_fill(attn_mask == 0, float('-inf'))
+
+        attention = F.softmax(similarity, dim=-1)
+        attention = self.attn_drop(attention)
+
+        output = torch.matmul(attention, value)     #[H,N,S,E//H]
+        output = output.permute(1,2,0,3)            #[N,S,H,E//H]
+        output = output.reshape(N, S, E) # (N, S, E)
+
+        output = self.proj(output)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -257,7 +275,16 @@ class TransformerDecoderLayer(nn.Module):
         # memory, and (2) the feedforward block. Each block should follow the      #
         # same structure as self-attention implemented just above.                 #
         ############################################################################
-
+        shortcut = tgt
+        tgt = self.cross_attn(query=tgt, key=memory, value=memory) # No mask
+        tgt = self.dropout_cross(tgt)
+        tgt = tgt + shortcut
+        tgt = self.norm_cross(tgt)
+        shortcut = tgt
+        tgt = self.ffn(tgt)
+        tgt = self.dropout_ffn(tgt)
+        tgt = tgt + shortcut
+        tgt = self.norm_ffn(tgt)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -316,7 +343,15 @@ class PatchEmbedding(nn.Module):
         # step. Once the patches are flattened, embed them into latent vectors     #
         # using the projection layer.                                              #
         ############################################################################
-
+        NP_H = H // self.patch_size
+        NP_W = W // self.patch_size
+        PS = self.patch_size
+        x_patch = x.reshape(N, C, NP_H, PS, NP_W, PS)
+        x_patch = x_patch.permute(0,2,4,1,3,5)
+        #NOTE should preserve [C, H, W] dimension order for each of patches
+        #Therefore x_patch = x_patch.permute(0,2,4,3,5,1) is not correct
+        x_patch = x_patch.reshape(N, self.num_patches, self.patch_dim)
+        out = self.proj(x_patch)     
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -364,6 +399,17 @@ class TransformerEncoderLayer(nn.Module):
         # TODO: Implement the encoder layer by applying self-attention followed    #
         # by a feedforward block. This code will be very similar to decoder layer. #
         ############################################################################
+        shortcut = src
+        src = self.self_attn(query=src, key=src, value=src, attn_mask=src_mask)
+        src = self.dropout_self(src)
+        src = src + shortcut
+        src = self.norm_self(src)
+
+        shortcut = src
+        src = self.ffn(src)
+        src = self.dropout_ffn(src)
+        src = src + shortcut
+        src = self.norm_ffn(src)
 
         ############################################################################
         #                             END OF YOUR CODE                             #
