@@ -18,8 +18,7 @@ def sim(z_i, z_j):
     #                                                                            #
     # HINT: torch.linalg.norm might be helpful.                                  #
     ##############################################################################
-    
-    
+    norm_dot_product = torch.dot(z_i, z_j.T) / (torch.linalg.norm(z_i)*torch.linalg.norm(z_j)) 
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -54,6 +53,17 @@ def simclr_loss_naive(out_left, out_right, tau):
         #                                                                            #
         # Hint: Compute l(k, k+N) and l(k+N, k).                                     #
         ##############################################################################
+        positive_score1 = torch.exp(sim(z_k, z_k_N)/tau)
+        all_score1 = 0
+        for i in range(2*N):
+            if i != k: all_score1 += torch.exp(sim(z_k, out[i])/tau)
+
+        positive_score2 = torch.exp(sim(z_k_N, z_k)/tau)
+        all_score2 = 0
+        for i in range(2*N):
+            if i != k+N: all_score2 += torch.exp(sim(z_k_N, out[i])/tau)
+        
+        total_loss += -torch.log(positive_score1/all_score1) - torch.log(positive_score2/all_score2)
         
         ##############################################################################
         #                               END OF YOUR CODE                             #
@@ -83,8 +93,14 @@ def sim_positive_pairs(out_left, out_right):
     #                                                                            #
     # HINT: torch.linalg.norm might be helpful.                                  #
     ##############################################################################
+    dot_map = torch.mul(out_left, out_right).sum(dim=1, keepdim=True)
     
+    norm_left = torch.linalg.norm(out_left, dim=1, keepdim=True)
+    norm_right = torch.linalg.norm(out_right, dim=1, keepdim=True)
     
+    norm_map = torch.mul(norm_left, norm_right)
+
+    pos_pairs = dot_map/norm_map
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -107,7 +123,11 @@ def compute_sim_matrix(out):
     # TODO: Start of your code.                                                  #
     ##############################################################################
     
+    dot_map = torch.matmul(out, out.T) #[2N, 2N]
+    norm = torch.linalg.norm(out, dim=1, keepdim=True) #[2N,1]
+    norm_map = torch.matmul(norm, norm.T)
 
+    sim_matrix = dot_map/norm_map
     
     ##############################################################################
     #                               END OF YOUR CODE                             #
@@ -134,7 +154,7 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     
     # Step 1: Use sim_matrix to compute the denominator value for all augmented samples.
     # Hint: Compute e^{sim / tau} and store into exponential, which should have shape 2N x 2N.
-    exponential = None
+    exponential = torch.exp(sim_matrix/tau)
     
     # This binary mask zeros out terms where k=i.
     mask = (torch.ones_like(exponential, device=device) - torch.eye(2 * N, device=device)).to(device).bool()
@@ -143,20 +163,22 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     exponential = exponential.masked_select(mask).view(2 * N, -1)  # [2*N, 2*N-1]
     
     # Hint: Compute the denominator values for all augmented samples. This should be a 2N x 1 vector.
-    denom = None
+    denom = exponential.sum(dim=1, keepdim=True)
 
     # Step 2: Compute similarity between positive pairs.
     # You can do this in two ways: 
     # Option 1: Extract the corresponding indices from sim_matrix. 
     # Option 2: Use sim_positive_pairs().
     
-    
     # Step 3: Compute the numerator value for all augmented samples.
-    numerator = None
-    
+    numerator_left = sim_positive_pairs(out_left, out_right)
+    numerator_right = sim_positive_pairs(out_right, out_left)
+    numerator_p = torch.cat([numerator_left, numerator_right], dim=0)
+    numerator = torch.exp(numerator_p/tau)
+    loss_p = -torch.log(numerator/denom) #[2N, 1]
     
     # Step 4: Now that you have the numerator and denominator for all augmented samples, compute the total loss.
-    loss = None
+    loss = loss_p.sum()/(2*N)
     
     ##############################################################################
     #                               END OF YOUR CODE                             #

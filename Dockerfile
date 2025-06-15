@@ -15,5 +15,6 @@ RUN pip install h5py
 RUN pip install imageio
 RUN pip install scipy
 RUN pip install ipywidgets
+RUN pip install pandas
 
 RUN git clone https://github.com/sangjae4309/cs231n-solution.git /root/
