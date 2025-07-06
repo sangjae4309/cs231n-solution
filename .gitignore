@@ -9,3 +9,7 @@
 **/pretrained_model/
 **/pretrained/
 **/*.gz
+**/*.pyx
+**/*.gnu.so
+**/*.pt
+**/*.mp4

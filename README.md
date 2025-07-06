@@ -33,8 +33,8 @@ Check out a detailed walkthrough at **[this link](https://sangjae4309.github.io/
 ### Assignment 3
 * [Q1](assignment3/Transformer_Captioning.ipynb): Image Captioning with Transformers (_Done_)
 * [Q2](assignment3/Self_Supervised_Learning.ipynb): Self-Supervised Learning for Image Classification (_Done_)
-* [Q3](assignment3/DDPM.ipynb): Denoising Diffusion Probabilistic Models (In progress)
-* [Q4](assignment3/CLIP_DINO.ipynb): CLIP and Dino (In progress)
+* [Q3](assignment3/DDPM.ipynb): Denoising Diffusion Probabilistic Models (_Done_)
+* [Q4](assignment3/CLIP_DINO.ipynb): CLIP and Dino (_Done_)
 
 <br>
 

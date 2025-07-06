@@ -180,7 +180,12 @@ class Unet(nn.Module):
             # Make sure to exactly follow this structure of ModuleList in order to
             # load a pretrained checkpoint.
             ##################################################################
-
+            #print(f"[Downsampling] ind:{ind} dim_in:{dim_in} dim_out:{dim_out}")
+            down_block = nn.ModuleList([
+                ResnetBlock(dim_in, dim_in, context_dim=context_dim),
+                ResnetBlock(dim_in, dim_in, context_dim=context_dim),
+                Downsample(dim_in, dim_out)
+            ])
             ##################################################################
             self.downs.append(down_block)
 
@@ -204,7 +209,12 @@ class Unet(nn.Module):
             # Don't forget to account for the skip connections by having 2 x dim_out
             # channels at the input of both ResnetBlocks.
             ##################################################################
-
+            #print(f"[Upsampling] ind:{ind} dim_in:{dim_in} dim_out:{dim_out}")
+            up_block = nn.ModuleList([
+                Upsample(dim_in, dim_out),
+                ResnetBlock(2*dim_out, dim_out, context_dim=context_dim),
+                ResnetBlock(2*dim_out, dim_out, context_dim=context_dim)
+            ])
             self.ups.append(up_block)
             ##################################################################
 
@@ -226,7 +236,11 @@ class Unet(nn.Module):
         # You will have to call self.forward two times.
         # For unconditional sampling, pass None in`text_emb`.
         ##################################################################
+        pred_cond = self.forward(x, time, model_kwargs)
+        model_kwargs["text_emb"] = None
+        pred_no_cond = self.forward(x, time, model_kwargs)
 
+        x = (1+cfg_scale)*pred_cond - cfg_scale*pred_no_cond
         ##################################################################
 
         return x
@@ -281,6 +295,23 @@ class Unet(nn.Module):
         #      skip connection from the downsampling path.
         #    - Make sure to pass the context to each ResNet block.
         ##################################################################
+        res_out = []
+        for down_layer in self.downs:
+            x = down_layer[0](x, context)
+            res_out.append(x)
+            x = down_layer[1](x, context)
+            res_out.append(x)
+            x = down_layer[2](x)
+    
+        x = self.mid_block1(x, context)
+        x = self.mid_block2(x, context)
+
+        for up_layer in self.ups:
+            x = up_layer[0](x)
+            x = torch.cat((x, res_out.pop()), dim=1)
+            x = up_layer[1](x, context)
+            x = torch.cat((x, res_out.pop()), dim=1)
+            x = up_layer[2](x, context)
 
         ##################################################################
 
